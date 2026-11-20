@@ -1,0 +1,146 @@
+TC-SMK-001:
+  objective: Confirmar que frontend, API y base QA están disponibles antes de ejecutar pruebas.
+  preconditions: [PostgreSQL 17 iniciado, IPAS levantado con ius_puniendi_qa, puertos locales libres y configurados]
+  data:
+    - {name: Ambiente, value: local-qa, source: configuración, observation: Sin datos reales}
+  expected: Frontend HTTP 200, API accesible con HTTP 401 sin token y conexión a ius_puniendi_qa.
+  steps:
+    - {action: Consultar la URL del frontend, expected: HTTP 200}
+    - {action: Consultar auth verify sin token, expected: HTTP 401 que confirma disponibilidad}
+    - {action: Abrir conexión PostgreSQL y consultar current_database, expected: Nombre exacto ius_puniendi_qa}
+TC-LOG-001:
+  objective: Verificar el acceso de un abogado QA mediante la interfaz web.
+  preconditions: [Frontend y API disponibles, Usuario abogado ficticio activo, Navegador Edge compatible]
+  data:
+    - {name: Correo, value: qa.abogado@ipas.test, source: seed QA, observation: Cuenta ficticia}
+    - {name: Contraseña, value: Protegida en .env, source: configuración local, observation: No se incluye en evidencias}
+  expected: El sistema autentica al abogado y muestra Mi panel de trabajo.
+  steps:
+    - {action: Abrir la página pública de IPAS, expected: Se muestra Acceso equipo}
+    - {action: Abrir el diálogo de autenticación, expected: Se muestran correo y contraseña}
+    - {action: Ingresar las credenciales QA y confirmar, expected: Navegación a /abogado/dashboard}
+    - {action: Esperar el encabezado Mi panel de trabajo, expected: Dashboard completamente cargado}
+TC-LOG-002:
+  objective: Comprobar el rechazo de una contraseña que no corresponde al usuario.
+  preconditions: [API disponible, Usuario abogado QA existente]
+  data:
+    - {name: Contraseña, value: incorrecta-qa, source: prueba, observation: Partición inválida}
+  expected: HTTP 401 con mensaje Password incorrecto.
+  steps:
+    - {action: Enviar POST /auth/login con correo válido y contraseña incorrecta, expected: HTTP 401}
+    - {action: Revisar el mensaje de respuesta, expected: Password incorrecto}
+TC-LOG-003:
+  objective: Validar el límite inferior del campo correo obligatorio.
+  preconditions: [API disponible]
+  data:
+    - {name: Email, value: Cadena vacía, source: prueba, observation: Valor límite}
+  expected: HTTP 400 indicando que email y password son obligatorios.
+  steps:
+    - {action: Enviar POST /auth/login con email vacío, expected: HTTP 400}
+    - {action: Revisar el mensaje de validación, expected: Indica campos obligatorios}
+TC-LOG-004:
+  objective: Confirmar que un JWT válido permite recuperar la identidad del abogado.
+  preconditions: [Usuario abogado QA autenticable]
+  data:
+    - {name: Token, value: Generado durante la prueba, source: POST /auth/login, observation: No se guarda en reportes}
+  expected: HTTP 200 con rol abogado y correo ficticio.
+  steps:
+    - {action: Autenticar al abogado QA, expected: Se obtiene JWT}
+    - {action: Enviar GET /auth/verify con Bearer token, expected: HTTP 200}
+    - {action: Comparar rol y correo, expected: Coinciden con el usuario QA}
+TC-PUB-001:
+  objective: Verificar la consulta pública protegida de un expediente ficticio.
+  preconditions: [Seed QA aplicado, Expediente QA-EXP-0001 relacionado con cliente ficticio]
+  data:
+    - {name: NUREJ, value: QA-EXP-0001, source: seed QA, observation: Ficticio}
+    - {name: CI, value: QA-CI-0001, source: seed QA, observation: Ficticio}
+  expected: HTTP 200 y datos públicos del expediente solicitado.
+  steps:
+    - {action: Consultar /seguimiento/publico/QA-EXP-0001 con el CI QA, expected: HTTP 200}
+    - {action: Validar success y NUREJ, expected: success true y QA-EXP-0001}
+TC-PUB-002:
+  objective: Impedir que un CI ajeno consulte el seguimiento público.
+  preconditions: [Expediente QA-EXP-0001 existente]
+  data:
+    - {name: CI, value: CI-NO-VALIDO, source: prueba, observation: Partición inválida}
+  expected: HTTP 404 sin información del expediente.
+  steps:
+    - {action: Consultar el NUREJ válido con CI incorrecto, expected: HTTP 404}
+    - {action: Revisar success, expected: Valor false}
+TC-EXP-001:
+  objective: Crear y eliminar un expediente sintético con los campos obligatorios.
+  preconditions: [Abogado QA autenticado, Base ius_puniendi_qa]
+  data:
+    - {name: NUREJ, value: QA-AUTO-<uuid>, source: generado, observation: Único por ejecución}
+    - {name: Materia, value: Derecho Civil, source: prueba, observation: Ficticia}
+  expected: Creación HTTP 201, datos persistidos y limpieza HTTP 204.
+  steps:
+    - {action: Enviar POST /casos con delito tipo y asunto, expected: HTTP 201}
+    - {action: Comparar el NUREJ devuelto, expected: Coincide con el generado}
+    - {action: Eliminar el caso temporal como admin, expected: HTTP 204}
+TC-EXP-002:
+  objective: Validar que delito sea obligatorio al crear un expediente.
+  preconditions: [Abogado QA autenticado]
+  data:
+    - {name: Delito, value: Ausente, source: prueba, observation: Partición inválida}
+  expected: HTTP 400 indicando campos requeridos.
+  steps:
+    - {action: Enviar POST /casos sin delito, expected: HTTP 400}
+    - {action: Revisar el mensaje, expected: Indica campos requeridos}
+TC-EXP-003:
+  objective: Verificar la respuesta ante un identificador de expediente inexistente.
+  preconditions: [Abogado QA autenticado]
+  data:
+    - {name: ID, value: 999999999, source: prueba, observation: Fuera del conjunto existente}
+  expected: HTTP 404.
+  steps:
+    - {action: Enviar GET /casos/999999999, expected: HTTP 404}
+TC-DOC-001:
+  objective: Comprobar la carga y limpieza de un PDF sintético permitido.
+  preconditions: [Abogado QA autenticado, Expediente QA-EXP-0001 existente]
+  data:
+    - {name: Archivo, value: evidencia_qa.pdf, source: generado en memoria, observation: Sin información jurídica real}
+  expected: Carga HTTP 201 y eliminación HTTP 204.
+  steps:
+    - {action: "Enviar multipart PDF a /documentos/casos/{id}", expected: HTTP 201}
+    - {action: Recuperar el ID creado, expected: ID de documento presente}
+    - {action: Eliminar el documento temporal, expected: HTTP 204}
+TC-DOC-002:
+  objective: Confirmar el rechazo de una extensión ejecutable.
+  preconditions: [Abogado QA autenticado, Expediente QA existente]
+  data:
+    - {name: Archivo, value: malware.exe, source: generado en memoria, observation: Contenido inerte}
+  expected: HTTP 400 con mensaje de tipos permitidos.
+  steps:
+    - {action: Enviar archivo .exe por multipart, expected: HTTP 400}
+    - {action: Revisar el mensaje, expected: Informa tipos permitidos}
+TC-DOC-003:
+  objective: Validar el límite superior de 10 MB para documentos.
+  preconditions: [Abogado QA autenticado, Expediente QA existente]
+  data:
+    - {name: Tamaño, value: 10.485.770 bytes, source: generado en memoria, observation: PDF sintético; 10 MB más 10 bytes por la cabecera y el relleno}
+  expected: HTTP 400 con error File too large.
+  steps:
+    - {action: Generar el PDF sintético de 10.485.770 bytes, expected: Archivo supera el límite de 10 MB en 10 bytes}
+    - {action: Enviar el archivo por multipart, expected: HTTP 400}
+    - {action: Revisar el mensaje, expected: File too large}
+TC-ROL-001:
+  objective: Impedir que un abogado obtenga el listado administrativo de usuarios.
+  preconditions: [Abogado QA autenticado, Endpoint /usuarios disponible]
+  data:
+    - {name: Rol, value: abogado, source: seed QA, observation: Privilegios insuficientes esperados}
+  expected: HTTP 403 sin listado de usuarios.
+  steps:
+    - {action: Autenticar al abogado QA, expected: JWT válido}
+    - {action: Enviar GET /usuarios, expected: HTTP 403}
+TC-E2E-001:
+  objective: Verificar el recorrido completo desde login hasta el expediente QA visible.
+  preconditions: [Frontend y API disponibles, Abogado y expediente ficticios creados]
+  data:
+    - {name: Expediente, value: QA-EXP-0001, source: seed QA, observation: Sintético}
+  expected: El abogado inicia sesión y visualiza QA-EXP-0001 en Gestión de Casos.
+  steps:
+    - {action: Autenticar al abogado desde la interfaz, expected: Se muestra el dashboard}
+    - {action: Abrir Casos desde el menú lateral, expected: Se muestra Gestión de Casos}
+    - {action: Buscar el NUREJ QA-EXP-0001 en la tabla, expected: Expediente visible con datos ficticios}
+

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Informe de automatización {{ general.suite }}</title>
+  <style>
+    :root{--navy:#10263a;--teal:#258477;--blue:#386cc7;--ink:#17212b;--muted:#607080;--line:#d9e0e6;--soft:#f3f6f8;--pass:#147a55;--fail:#b42318;--skip:#8a6116;--notrun:#59636e}
+    *{box-sizing:border-box}body{margin:0;background:#eef2f5;color:var(--ink);font:15px/1.5 Segoe UI,Arial,sans-serif}.page{max-width:1100px;margin:28px auto;background:white;padding:48px 56px;box-shadow:0 12px 36px #10263a18}h1,h2,h3{color:#000;margin:0 0 14px}h1{font-size:34px;line-height:1.12}h2{font-size:23px;margin-top:34px}h3{font-size:18px;margin-top:24px}.lead{font-size:17px;color:#344454;max-width:850px}.meta,.summary,.cases{width:100%;border-collapse:collapse;margin:14px 0 22px}.meta th,.meta td,.summary th,.summary td,.cases th,.cases td{border:1px solid var(--line);padding:10px 12px;vertical-align:top}.meta th{width:19%;background:#edf3f6;text-align:left}.summary th,.cases th{background:var(--navy);color:white;text-align:left}.summary td{text-align:center;font-size:18px;font-weight:700}.status{display:inline-block;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:800;letter-spacing:.03em}.PASS{background:#dff4e9;color:var(--pass)}.FAIL{background:#fde7e5;color:var(--fail)}.SKIPPED{background:#fff3d6;color:var(--skip)}.NOT-RUN{background:#eceff2;color:var(--notrun)}.case{border-top:4px solid var(--teal);margin-top:38px;padding-top:20px}.label{font-weight:700;color:#344454}.data-table,.steps{width:100%;border-collapse:collapse;margin:10px 0 18px}.data-table th,.data-table td,.steps th,.steps td{border:1px solid var(--line);padding:9px;vertical-align:top}.data-table th,.steps th{background:#e9f0f5;text-align:left}.steps td:first-child{width:42px;text-align:center}.evidence{max-width:100%;border:1px solid var(--line);margin:8px 0 18px}.error{color:var(--fail);background:#fff5f4;padding:12px;border-left:4px solid var(--fail);white-space:pre-wrap}.footer{margin-top:40px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}@media print{body{background:white}.page{box-shadow:none;margin:0;max-width:none;padding:20mm}.case{break-before:page}.evidence{break-inside:avoid}}
+  </style>
+</head>
+<body><main class="page">
+  <h1>Informe detallado de automatización IPAS</h1>
+  <p class="lead">La corrida {{ general.run_id }} terminó con estado <strong>{{ general.status }}</strong>. Se ejecutaron {{ summary.total }} casos sobre el ambiente local QA, con {{ summary.pass }} PASS y {{ summary.fail }} FAIL.</p>
+  <h2>Datos generales</h2>
+  <table class="meta">
+    <tr><th>Proyecto</th><td>{{ general.project }}</td><th>Ambiente</th><td>{{ general.environment }}</td></tr>
+    <tr><th>Tipo</th><td>{{ general.type }}</td><th>Suite</th><td>{{ general.suite }}</td></tr>
+    <tr><th>Inicio</th><td>{{ general.started_at }}</td><th>Fin</th><td>{{ general.finished_at }}</td></tr>
+    <tr><th>Duración</th><td>{{ general.duration }}</td><th>Correo</th><td>{{ general.email }}</td></tr>
+    <tr><th>Run ID</th><td colspan="3">{{ general.run_id }}</td></tr>
+  </table>
+  <h2>Resumen de resultados</h2>
+  <table class="summary"><tr><th>Total</th><th>PASS</th><th>FAIL</th><th>SKIPPED</th><th>NOT RUN</th><th>Éxito</th></tr><tr><td>{{ summary.total }}</td><td>{{ summary.pass }}</td><td>{{ summary.fail }}</td><td>{{ summary.skipped }}</td><td>{{ summary.not_run }}</td><td>{{ summary.success_rate }}%</td></tr></table>
+  <table class="cases"><tr><th>ID</th><th>Nombre</th><th>Tipo y suite</th><th>Estado</th><th>Observación</th></tr>{% for case in cases %}<tr><td>{{ case.id }}</td><td>{{ case.name }}</td><td>{{ case.type }}<br>{{ case.module }}</td><td><span class="status {{ case.status|replace(' ','-') }}">{{ case.status }}</span></td><td>{{ case.observation }}</td></tr>{% endfor %}</table>
+  <h2>Detalle por caso</h2>
+  {% for case in cases %}<section class="case">
+    <h3>{{ case.id }} {{ case.name }}</h3>
+    <p><span class="label">Prioridad</span> {{ case.priority }} &nbsp; <span class="label">Módulo</span> {{ case.module }} &nbsp; <span class="label">Estado</span> <span class="status {{ case.status|replace(' ','-') }}">{{ case.status }}</span></p>
+    <p><span class="label">Objetivo</span> {{ case.objective }}</p>
+    <p><span class="label">Precondiciones</span></p><ul>{% for item in case.preconditions %}<li>{{ item }}</li>{% endfor %}</ul>
+    <p><span class="label">Datos de prueba</span></p><table class="data-table"><tr><th>Dato</th><th>Valor</th><th>Origen</th><th>Observación</th></tr>{% for item in case.data %}<tr><td>{{ item.name }}</td><td>{{ item.value }}</td><td>{{ item.source }}</td><td>{{ item.observation }}</td></tr>{% endfor %}</table>
+    <p><span class="label">Resultado esperado</span> {{ case.expected }}</p>
+    <table class="steps"><tr><th>#</th><th>Paso ejecutado</th><th>Resultado esperado</th><th>Resultado observado</th><th>Estado</th></tr>{% for step in case.steps %}<tr><td>{{ loop.index }}</td><td>{{ step.action }}</td><td>{{ step.expected }}</td><td>{{ step.observed }}</td><td><span class="status {{ step.status|replace(' ','-') }}">{{ step.status }}</span></td></tr>{% endfor %}</table>
+    {% if case.status == 'FAIL' %}<div class="error"><strong>Error y reproducción</strong> {{ case.observation }}{% if case.defect %}<br>Defecto relacionado: {{ case.defect }}{% endif %}</div>{% endif %}
+    {% for image in case.images %}<p class="label">Evidencia {{ loop.index }}</p><img class="evidence" src="data:image/png;base64,{{ image.base64 }}" alt="Evidencia {{ case.id }} {{ loop.index }}">{% endfor %}
+    {% if not case.images %}<p><span class="label">Evidencia</span> Registro técnico en JUnit, pytest.log y result.json del run.</p>{% endif %}
+  </section>{% endfor %}
+  <p class="footer">Generado desde resultados reales de pytest. Los datos de prueba son ficticios y pertenecen exclusivamente a ius_puniendi_qa.</p>
+</main></body></html>
+

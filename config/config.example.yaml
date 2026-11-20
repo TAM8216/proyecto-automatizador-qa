@@ -1,0 +1,13 @@
+project:
+  name: IPAS - IUS PUNIENDI
+  environment: local-qa
+  database_guard: ius_puniendi_qa
+
+timeouts:
+  health_seconds: 5
+  selenium_seconds: 15
+
+evidence:
+  root: evidencias
+  screenshot_each_step: true
+

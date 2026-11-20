@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "sut": "IPAS / IUS PUNIENDI local QA",
+  "verified_at": "2026-11-17T16:34:27.929590+00:00",
+  "verification_method": "Selenium Edge contra DOM renderizado; cada locator fue visible o accionable.",
+  "base_url": "http://localhost:3000",
+  "locators": {
+    "login.access_button": {
+      "by": "xpath",
+      "value": "//button[normalize-space()='Acceso equipo']"
+    },
+    "login.email": {
+      "by": "xpath",
+      "value": "//label[normalize-space()='Correo institucional']/following::input[1]"
+    },
+    "login.password": {
+      "by": "xpath",
+      "value": "//label[normalize-space()='Contraseña']/following::input[1]"
+    },
+    "login.submit": {
+      "by": "xpath",
+      "value": "//button[normalize-space()='Ingresar']"
+    },
+    "dashboard.heading": {
+      "by": "xpath",
+      "value": "//*[normalize-space()='Mi panel de trabajo']"
+    },
+    "cases.navigation": {
+      "by": "xpath",
+      "value": "//a[.//*[normalize-space()='Casos'] or normalize-space()='Casos']"
+    },
+    "cases.heading": {
+      "by": "xpath",
+      "value": "//*[normalize-space()='Gestión de Casos']"
+    }
+  }
+}

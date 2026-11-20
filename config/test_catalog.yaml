@@ -1,0 +1,181 @@
+version: 2
+project: IPAS - IUS PUNIENDI
+flows:
+  acceso:
+    name: Acceso y sesión
+    description: Disponibilidad, autenticación y validación de sesión.
+    type: funcional
+  gestion_juridica:
+    name: Gestión jurídica
+    description: Seguimiento público, expedientes y documentos.
+    type: funcional
+  seguridad:
+    name: Seguridad y permisos
+    description: Autorización por rol y defectos de acceso controlados.
+    type: funcional
+  integral:
+    name: Flujo integral y regresión
+    description: Recorridos E2E y verificación estable del sistema.
+    type: funcional
+  rendimiento:
+    name: Rendimiento
+    description: Carga moderada sobre la API local de QA.
+    type: no_funcional
+suites:
+  smoke:
+    name: Smoke
+    description: Disponibilidad mínima y acceso válido.
+    flow: acceso
+  autenticacion:
+    name: Login y autenticación
+    description: Credenciales, campos obligatorios y verificación JWT.
+    flow: acceso
+  consulta_publica:
+    name: Seguimiento público
+    description: Consulta protegida mediante NUREJ/CUD y CI.
+    flow: gestion_juridica
+  expedientes:
+    name: Gestión de expedientes
+    description: Creación, validaciones y consulta de casos.
+    flow: gestion_juridica
+  documentos:
+    name: Gestión de documentos
+    description: Archivos válidos, extensiones rechazadas y valor límite de 10 MB.
+    flow: gestion_juridica
+  roles:
+    name: Roles y permisos
+    description: Restricciones de acceso del lado servidor.
+    flow: seguridad
+  e2e:
+    name: E2E jurídico
+    description: Login y visualización del expediente ficticio.
+    flow: integral
+  regression:
+    name: Regresión funcional
+    description: Todos los casos estables; excluye el FAIL controlado.
+    flow: integral
+  controlled_fail:
+    name: FAIL controlado
+    description: Caso conocido que demuestra la detección de un defecto real.
+    flow: seguridad
+  carga_local:
+    name: Carga local de API
+    description: Login y consultas de expedientes/documentos con carga moderada exclusivamente local.
+    type: no_funcional
+    flow: rendimiento
+cases:
+  - id: TC-SMK-001
+    name: Disponibilidad integral de IPAS QA
+    type: funcional
+    module: infraestructura local
+    priority: Alta
+    suites: [smoke, regression]
+    nodeid: tests/api/test_health_contract.py::test_ipas_local_health
+  - id: TC-LOG-001
+    name: Login válido de abogado desde la interfaz
+    type: funcional
+    module: autenticación
+    priority: Alta
+    suites: [smoke, autenticacion, regression]
+    nodeid: tests/functional/test_login_smoke.py::test_login_abogado_valido
+  - id: TC-LOG-002
+    name: Rechazo de contraseña incorrecta
+    type: funcional negativo
+    module: autenticación
+    priority: Alta
+    suites: [autenticacion, regression]
+    nodeid: tests/api/test_auth_api.py::test_login_rechaza_password_incorrecto
+  - id: TC-LOG-003
+    name: Correo obligatorio vacío
+    type: valor límite
+    module: autenticación
+    priority: Alta
+    suites: [autenticacion, regression]
+    nodeid: tests/api/test_auth_api.py::test_login_requiere_email
+  - id: TC-LOG-004
+    name: Verificación de token válido
+    type: funcional positivo
+    module: autenticación
+    priority: Alta
+    suites: [autenticacion, regression]
+    nodeid: tests/api/test_auth_api.py::test_verify_acepta_token_valido
+  - id: TC-PUB-001
+    name: Consulta pública con NUREJ y CI válidos
+    type: funcional positivo
+    module: seguimiento público
+    priority: Alta
+    suites: [consulta_publica, regression]
+    nodeid: tests/api/test_public_tracking.py::test_seguimiento_publico_valido
+  - id: TC-PUB-002
+    name: Consulta pública rechaza CI incorrecto
+    type: partición de equivalencia inválida
+    module: seguimiento público
+    priority: Alta
+    suites: [consulta_publica, regression]
+    nodeid: tests/api/test_public_tracking.py::test_seguimiento_publico_ci_incorrecto
+  - id: TC-EXP-001
+    name: Crear expediente con campos obligatorios
+    type: funcional positivo
+    module: expedientes
+    priority: Alta
+    suites: [expedientes, regression]
+    nodeid: tests/api/test_cases_api.py::test_crear_expediente_valido
+  - id: TC-EXP-002
+    name: Rechazar expediente sin delito
+    type: partición de equivalencia inválida
+    module: expedientes
+    priority: Alta
+    suites: [expedientes, regression]
+    nodeid: tests/api/test_cases_api.py::test_crear_expediente_sin_campo_obligatorio
+  - id: TC-EXP-003
+    name: Consultar expediente inexistente
+    type: funcional negativo
+    module: expedientes
+    priority: Media
+    suites: [expedientes, regression]
+    nodeid: tests/api/test_cases_api.py::test_consultar_expediente_inexistente
+  - id: TC-DOC-001
+    name: Cargar documento PDF válido
+    type: funcional positivo
+    module: documentos
+    priority: Alta
+    suites: [documentos, regression]
+    nodeid: tests/api/test_documents_api.py::test_cargar_documento_pdf_valido
+  - id: TC-DOC-002
+    name: Rechazar extensión ejecutable
+    type: partición de equivalencia inválida
+    module: documentos
+    priority: Alta
+    suites: [documentos, regression]
+    nodeid: tests/api/test_documents_api.py::test_rechazar_extension_no_permitida
+  - id: TC-DOC-003
+    name: Rechazar archivo mayor a 10 MB
+    type: valor límite
+    module: documentos
+    priority: Alta
+    suites: [documentos, regression]
+    nodeid: tests/api/test_documents_api.py::test_rechazar_archivo_superior_a_10mb
+  - id: TC-ROL-001
+    name: Abogado no puede listar usuarios
+    type: seguridad negativo
+    module: roles y permisos
+    priority: Alta
+    suites: [roles, controlled_fail]
+    controlled_fail: true
+    defect: BUG-01-F
+    nodeid: tests/api/test_roles_api.py::test_abogado_no_puede_listar_usuarios
+  - id: TC-E2E-001
+    name: Login y consulta del expediente ficticio
+    type: E2E
+    module: autenticación y expedientes
+    priority: Alta
+    suites: [e2e, regression]
+    nodeid: tests/functional/test_e2e_case_visibility.py::test_abogado_visualiza_expediente_qa
+  - id: TC-PERF-001
+    name: Carga moderada de consultas jurídicas
+    type: rendimiento
+    module: autenticación, expedientes y documentos
+    priority: Alta
+    suites: [carga_local]
+    engine: locust
+
